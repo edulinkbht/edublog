@@ -3,10 +3,10 @@ def perform_search(query):
         return []
         
     database = [
-        {"title": "The Launch Event", "snippet": "On Saturday, April 4th, we introduced EduLink.", "url": "/launch.py"},
-        {"title": "Backstory Of EduLink", "snippet": "How EduLink actually started and evolved over time.", "url": "/backstory.py"},
-        {"title": "EduLink And Growth", "snippet": "Our community has grown to more than before", "url": "/growth.py"},
-        {"title": "Research", "snippet": "The latest findings and studies related to EduLink.", "url": "/research.py"}
+        {"title": "The Launch Event", "snippet": "On Saturday, April 4th, we introduced EduLink.", "url": "/"},
+        {"title": "Backstory Of EduLink", "snippet": "How EduLink actually started and evolved over time.", "url": "/backstory"},
+        {"title": "Community Traction", "snippet": "Our community has grown to 250 active users.", "url": "/#community-traction"},
+        {"title": "Platform Refactoring", "snippet": "Transitioning entirely to TypeScript.", "url": "/#looking-ahead"}
     ]
     
     query = query.lower()

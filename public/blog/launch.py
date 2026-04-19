@@ -529,7 +529,7 @@ html_content = """
             <div class="sidebar-promo">
                 <img src="https://i.imghippo.com/files/iBRQ4219VjI.png" alt="EduLink Promo" class="promo-image">
                 <p class="promo-text">EduLink will be adding newsletters and ads.</p>
-                <a href="/home.py" class="home-btn">Home</a>
+                <a href="/" class="home-btn">Home</a>
             </div>
         </aside>
 
