@@ -2,11 +2,23 @@
   "version": 2,
   "builds": [
     {
-      "src": "launch.py",
+      "src": "public/blog/launch.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "public/blog/backstory.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
+    {
+      "src": "/backstory",
+      "dest": "public/blog/backstory.py"
+    },
+    {
+      "src": "/api/search",
+      "dest": "public/blog/launch.py"
+    },
     {
       "src": "/(.*)",
       "dest": "public/blog/launch.py"
