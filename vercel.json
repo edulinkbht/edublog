@@ -16,6 +16,10 @@
       "dest": "public/blog/backstory.py"
     },
     {
+      "src": "/api/search",
+      "dest": "public/blog/launch.py"
+    },
+    {
       "src": "/(.*)",
       "dest": "public/blog/launch.py"
     }
