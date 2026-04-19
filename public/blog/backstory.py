@@ -1,5 +1,10 @@
+import os
+import sys
 from flask import Flask, request, jsonify
-from search import perform_search  # <--- MUST say 'search', NOT 'search_logic'
+
+# Add current directory to sys.path to find search.py
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from search import perform_search
 
 app = Flask(__name__)
 
@@ -745,7 +750,7 @@ html_content = """
 </html>
 """
 
-@app.route('/')
+@app.route('/backstory')
 def home():
     return html_content
 
