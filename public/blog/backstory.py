@@ -1,9 +1,12 @@
 import os
 import sys
-from flask import Flask, request, jsonify
 
-# Add current directory to sys.path to find search.py
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Get the directory where the current script is located
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from flask import Flask, request, jsonify
 from search import perform_search
 
 app = Flask(__name__)
