@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, request, jsonify
+from search import perform_search  # <--- MUST say 'search', NOT 'search_logic'
 
 app = Flask(__name__)
 
@@ -15,7 +16,6 @@ html_content = """
     
     <style>
         :root {
-            /* Minimalist, professional grayscale palette */
             --accent-color: #C05636;
             --text-main: #1A1A1A;
             --text-muted: #666666;
@@ -31,6 +31,7 @@ html_content = """
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            scroll-behavior: smooth;
         }
 
         body {
@@ -148,6 +149,109 @@ html_content = """
             background: #FFFFFF;
         }
 
+        /* --- Search Modal Overlay --- */
+        .search-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1000;
+            justify-content: center;
+            align-items: flex-start;
+            padding-top: 12vh;
+            backdrop-filter: blur(2px);
+        }
+
+        .search-modal-content {
+            background: var(--bg-main);
+            width: 90%;
+            max-width: 550px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .search-input-wrapper {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input-wrapper input {
+            width: 100%;
+            border: none;
+            outline: none;
+            font-size: 1.1rem;
+            font-family: sans-serif;
+            color: var(--text-main);
+        }
+        
+        .search-input-wrapper input::placeholder {
+            color: var(--text-faint);
+        }
+
+        .search-results {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #FAFAFA;
+        }
+
+        .search-result-item {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: background 0.15s ease;
+            display: block;
+            text-decoration: none;
+        }
+
+        .search-result-item:hover {
+            background: var(--bg-main);
+            text-decoration: none;
+        }
+
+        .search-result-item h4 {
+            margin: 0 0 0.3rem 0;
+            font-size: 0.95rem;
+            font-family: sans-serif;
+            color: var(--text-main);
+        }
+
+        .search-result-item p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+            font-family: sans-serif;
+        }
+
+        .search-empty {
+            padding: 2.5rem 1rem;
+            text-align: center;
+            color: var(--text-faint);
+            font-size: 0.9rem;
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-empty-gif {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+
         /* --- Layout --- */
         .layout {
             display: flex;
@@ -174,54 +278,53 @@ html_content = """
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
         }
 
-        .menu {
-            padding: 1.5rem 0;
-        }
-
-        .menu-group {
-            margin-bottom: 1rem;
-        }
-
-        .menu-title {
-            padding: 0.5rem 2rem;
-            font-weight: 700;
-            font-size: 0.85rem;
-            color: var(--text-main);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        .sidebar-promo {
+            padding: 2.5rem 1.5rem;
             display: flex;
-            justify-content: space-between;
-            cursor: pointer;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1.5rem;
         }
 
-        .menu-item {
-            padding: 0.3rem 2rem 0.3rem 2.5rem;
+        .promo-image {
+            width: 100%;
+            max-width: 220px;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-main);
+        }
+
+        .promo-text {
             font-size: 0.9rem;
             color: var(--text-muted);
-            cursor: pointer;
-            display: block;
-            text-decoration: none;
-            transition: color 0.2s ease;
+            line-height: 1.5;
+            font-family: sans-serif;
         }
 
-        .menu-item:hover {
-            color: var(--text-main);
+        .home-btn {
+            display: inline-block;
+            width: 100%;
+            padding: 0.4rem;
+            background-color: var(--accent-color);
+            color: #FFFFFF;
             text-decoration: none;
-        }
-
-        .menu-item.active {
-            color: var(--text-main);
+            text-align: center;
+            border-radius: 6px;
             font-weight: 700;
+            font-size: 0.9rem;
+            font-family: sans-serif;
+            transition: opacity 0.2s ease, transform 0.1s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .menu-item.active::before {
-            content: "— ";
-            color: var(--text-faint);
-            margin-left: -1.2rem;
-            position: absolute;
+        .home-btn:hover {
+            text-decoration: none;
+            opacity: 0.9;
+            transform: translateY(-1px);
         }
 
         /* --- Main Content --- */
@@ -229,6 +332,7 @@ html_content = """
             flex: 1;
             padding: 3rem 4rem;
             overflow-y: auto;
+            scroll-behavior: smooth;
         }
 
         .content-inner {
@@ -268,7 +372,6 @@ html_content = """
             border-radius: 0 8px 8px 0;
         }
 
-        /* Embedded Image Styling */
         .content-image {
             width: 100%;
             height: auto;
@@ -287,7 +390,6 @@ html_content = """
             font-family: sans-serif;
         }
 
-        /* Container for profile pictures pair with a gap */
         .profile-row {
             display: flex;
             width: 100%;
@@ -297,12 +399,12 @@ html_content = """
         }
 
         .team-photo-pair-item {
-            flex: 1; 
-            height: 350px; 
-            object-fit: cover; 
+            flex: 1;
+            height: 350px;
+            object-fit: cover;
             display: block;
-            border-radius: 8px; 
-            border: 1px solid var(--border-color); 
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
             background-color: #F9F9F9;
         }
 
@@ -389,7 +491,6 @@ html_content = """
             font-weight: 700;
         }
 
-        /* --- Responsive Design --- */
         @media (max-width: 1024px) {
             .sidebar-right {
                 display: none;
@@ -432,11 +533,10 @@ html_content = """
         </div>
         <div class="navbar-right">
             <div class="nav-links navbar-right-links">
-                <a href="#">v2.0</a>
                 <a href="#">English</a>
             </div>
             <div class="search-wrapper">
-                <div class="search-bar">
+                <div class="search-bar" id="open-search-btn">
                     <span>Search</span>
                     <span class="shortcut-key">⌘ K</span>
                 </div>
@@ -444,33 +544,33 @@ html_content = """
         </div>
     </header>
 
-    <div class="layout">
-        
-        <aside class="sidebar-left">
-            <div class="menu">
-                <div class="menu-group">
-                    <a href="#" class="menu-item active">News & Updates</a>
+    <div id="search-modal" class="search-modal">
+        <div class="search-modal-content">
+            <div class="search-input-wrapper">
+                <input type="text" id="search-input" placeholder="Search EduBlog articles, topics, or authors..." autocomplete="off">
+            </div>
+            <div class="search-results" id="search-results">
+                <div class="search-empty">
+                    <img src="https://i.pinimg.com/originals/23/50/52/2350529b817461af4e983d0915ebdf6c.gif" alt="Waiting for search..." class="search-empty-gif">
+                    Type a keyword to start searching...
                 </div>
-                
-                <div class="menu-group">
-                    <div class="menu-title">Platform</div>
-                    <a href="#" class="menu-item">Development Logs</a>
-                    <a href="#" class="menu-item">Security Patches</a>
-                    <a href="#" class="menu-item">Frameworks</a>
-                </div>
+            </div>
+        </div>
+    </div>
 
-                <div class="menu-group">
-                    <div class="menu-title">Community</div>
-                    <a href="#" class="menu-item">Student Initiatives</a>
-                    <a href="#" class="menu-item">Teacher Resources</a>
-                </div>
+    <div class="layout">
+        <aside class="sidebar-left">
+            <div class="sidebar-promo">
+                <img src="https://i.imghippo.com/files/iBRQ4219VjI.png" alt="EduLink Promo" class="promo-image">
+                <p class="promo-text">EduLink will be adding newsletters and ads.</p>
+                <a href="/home.py" class="home-btn">Home</a>
             </div>
         </aside>
 
         <main class="main-content">
             <div class="content-inner">
 
-                <h1>The Backstory of EduLink</h1>
+                <h1 id="backstory-title">The Backstory of EduLink</h1>
 
                 <p>Every major platform has an origin story, and EduLink is no different. What is today a cohesive educational tool initially started as a curious side project by <strong>Ngawang Tshogyal Phuentshok</strong>. Over the years, through trial, error, and iterations of completely different ideas, the vision for what we now know as EduLink gradually took form.</p>
 
@@ -560,14 +660,87 @@ html_content = """
         <aside class="sidebar-right">
             <div class="sidebar-right-title">On this page</div>
             <ul class="toc-list">
-                <li><a href="#druk-brilliant" class="active">1. Druk Brilliant</a></li>
+                <li><a href="#backstory-title" class="active">Overview</a></li>
+                <li><a href="#druk-brilliant">1. Druk Brilliant</a></li>
                 <li><a href="#genhub">2. Genhub</a></li>
                 <li><a href="#gravitas">3. Gravitas</a></li>
                 <li><a href="#edulink">4. EduLink Present Day</a></li>
             </ul>
         </aside>
-
     </div>
+
+    <script>
+        const openSearchBtn = document.getElementById('open-search-btn');
+        const searchModal = document.getElementById('search-modal');
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+
+        const defaultStateHTML = `
+            <div class="search-empty">
+                <img src="https://i.pinimg.com/originals/23/50/52/2350529b817461af4e983d0915ebdf6c.gif" alt="Waiting for search..." class="search-empty-gif">
+                Type a keyword to start searching...
+            </div>
+        `;
+
+        function openSearch() {
+            searchModal.style.display = 'flex';
+            searchInput.focus();
+            if (searchInput.value.trim() === '') {
+                searchResults.innerHTML = defaultStateHTML;
+            }
+        }
+
+        function closeSearch() {
+            searchModal.style.display = 'none';
+            searchInput.value = '';
+            searchResults.innerHTML = defaultStateHTML; 
+        }
+
+        openSearchBtn.addEventListener('click', openSearch);
+
+        searchModal.addEventListener('click', (e) => {
+            if (e.target === searchModal) {
+                closeSearch();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                openSearch();
+            }
+            if (e.key === 'Escape' && searchModal.style.display === 'flex') {
+                closeSearch();
+            }
+        });
+
+        searchInput.addEventListener('input', async (e) => {
+            const query = e.target.value.trim();
+            
+            if (query.length === 0) {
+                searchResults.innerHTML = defaultStateHTML;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+
+                if (data.length > 0) {
+                    searchResults.innerHTML = data.map(item => `
+                        <a href="${item.url}" class="search-result-item" onclick="closeSearch()">
+                            <h4>${item.title}</h4>
+                            <p>${item.snippet}</p>
+                        </a>
+                    `).join('');
+                } else {
+                    searchResults.innerHTML = '<div class="search-empty">No results found for "'+ query +'"</div>';
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+            }
+        });
+    </script>
 </body>
 </html>
 """
@@ -575,6 +748,12 @@ html_content = """
 @app.route('/')
 def home():
     return html_content
+
+@app.route('/api/search')
+def api_search():
+    query = request.args.get('q', '')
+    results = perform_search(query)
+    return jsonify(results)
 
 if __name__ == '__main__':
     app.run(debug=True)
